@@ -82,7 +82,7 @@ export class RateLimiter {
     ]);
 
     if (typeof result !== "string") {
-      throw new TypeError("Script did not return a string");
+      throw new TypeError("Eval function did not return a string");
     }
 
     const [remainingRequests, nextAvailableTimestamp, isLimited] = result.split(
