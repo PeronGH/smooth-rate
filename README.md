@@ -14,7 +14,7 @@ A Redis-agnostic rate limiting module for Deno applications. smooth-rate offers 
 
 ## Basic Usage
 
-Import the `RateLimiter` class, `RateLimiterConfig`, `EvalFunction`, and `DelFunction` from the module:
+Import the `RateLimiter` class from the module:
 
 ```typescript
 import { RateLimiter } from 'https://deno.land/x/smooth_rate/mod.ts';
