@@ -27,16 +27,19 @@ export class RateLimiter {
     local maxRequests = tonumber(ARGV[3])
 
     redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', currentTimestamp - windowMs)
+    local count = redis.call('ZCARD', KEYS[1])
+    local remainingRequests = maxRequests - count
+    local isLimited = remainingRequests <= 0
 
-    local remainingRequests = maxRequests - redis.call('ZCARD', KEYS[1])
-    local nextAvailableTimestamp = redis.call('ZRANGE', KEYS[1], 0, 0)[1] + windowMs
-
-    if remainingRequests > 0 then
+    if not isLimited then
       redis.call('ZADD', KEYS[1], currentTimestamp, currentTimestamp)
-      redis.call('EXPIRE', KEYS[1], windowMs / 1000)
+      remainingRequests = remainingRequests - 1
     end
 
-    return tostring(remainingRequests) .. ',' .. tostring(nextAvailableTimestamp) .. ',' .. tostring(remainingRequests <= 0)
+    local oldestTimestamp = redis.call('ZRANGE', KEYS[1], 0, 0)[1]
+    local nextAvailableTimestamp = oldestTimestamp and tonumber(oldestTimestamp) + windowMs or currentTimestamp
+
+    return tostring(remainingRequests) .. ',' .. tostring(nextAvailableTimestamp) .. ',' .. tostring(isLimited)
   `;
 
   private static checkScript = `
@@ -45,11 +48,14 @@ export class RateLimiter {
     local maxRequests = tonumber(ARGV[3])
 
     redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', currentTimestamp - windowMs)
+    local count = redis.call('ZCARD', KEYS[1])
+    local remainingRequests = maxRequests - count
+    local isLimited = remainingRequests <= 0
 
-    local remainingRequests = maxRequests - redis.call('ZCARD', KEYS[1])
-    local nextAvailableTimestamp = redis.call('ZRANGE', KEYS[1], 0, 0)[1] + windowMs
+    local oldestTimestamp = redis.call('ZRANGE', KEYS[1], 0, 0)[1]
+    local nextAvailableTimestamp = oldestTimestamp and tonumber(oldestTimestamp) + windowMs or currentTimestamp
 
-    return tostring(remainingRequests) .. ',' .. tostring(nextAvailableTimestamp) .. ',' .. tostring(remainingRequests <= 0)
+    return tostring(remainingRequests) .. ',' .. tostring(nextAvailableTimestamp) .. ',' .. tostring(isLimited)
   `;
 
   constructor(config: RateLimiterConfig) {
@@ -67,6 +73,10 @@ export class RateLimiter {
       this.windowMs.toString(),
       this.maxRequests.toString(),
     ]);
+
+    if (typeof result !== "string") {
+      throw new TypeError("Script did not return a string");
+    }
 
     const [remainingRequests, nextAvailableTimestamp, isLimited] = result.split(
       ",",
