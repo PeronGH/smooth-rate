@@ -63,16 +63,28 @@ Deno.test("ratelimit", async () => {
 
     time.tick(50000);
 
-    // after window expires, requests should no longer be limited
+    // after the first request expires, the next request can be made
     const shouldNotLimit = await rateLimiter.limit("test");
     assertEquals(shouldNotLimit, {
       isLimited: false,
       remainingRequests: 0,
       nextAvailableTimestamp: time.start + 61000,
     });
+
+    // reset should clear the limit
+    await rateLimiter.reset("test");
+
+    time.tick(1000);
+
+    // after reset, the next request should not be limited
+    const shouldNotLimitAfterReset = await rateLimiter.limit("test");
+    assertEquals(shouldNotLimitAfterReset, {
+      isLimited: false,
+      remainingRequests: 9,
+      nextAvailableTimestamp: time.start + 121000,
+    });
   } finally {
     // clean up
     time.restore();
-    await redis.del("ratelimit:test:test");
   }
 });
