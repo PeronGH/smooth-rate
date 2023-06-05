@@ -2,11 +2,16 @@ interface EvalFunction {
   (script: string, keys: string[], args: string[]): Promise<string>;
 }
 
+interface DelFunction {
+  (key: string): Promise<void>;
+}
+
 export interface RateLimiterConfig {
   keyPrefix: string;
   windowMs: number;
   maxRequests: number;
   evalFunc: EvalFunction;
+  delFunc: DelFunction;
 }
 
 export interface RateLimitInfo {
@@ -20,6 +25,7 @@ export class RateLimiter {
   private windowMs: number;
   private maxRequests: number;
   private evalFunc: EvalFunction;
+  private delFunc: DelFunction;
 
   private static limitScript = `
     local currentTimestamp = tonumber(ARGV[1])
@@ -63,6 +69,7 @@ export class RateLimiter {
     this.windowMs = config.windowMs;
     this.maxRequests = config.maxRequests;
     this.evalFunc = config.evalFunc;
+    this.delFunc = config.delFunc;
   }
 
   private async runScript(script: string, key: string): Promise<RateLimitInfo> {
@@ -94,5 +101,10 @@ export class RateLimiter {
 
   async check(key: string): Promise<RateLimitInfo> {
     return await this.runScript(RateLimiter.checkScript, key);
+  }
+
+  async reset(key: string): Promise<void> {
+    const namespacedKey = `${this.keyPrefix}:${key}`;
+    return await this.delFunc(namespacedKey);
   }
 }
