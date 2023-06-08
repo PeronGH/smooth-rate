@@ -10,8 +10,10 @@ export interface RateLimiterConfig {
   keyPrefix: string;
   windowMs: number;
   maxRequests: number;
-  evalFunc: EvalFunction;
-  delFunc: DelFunction;
+  redis: {
+    eval: EvalFunction;
+    del: DelFunction;
+  };
 }
 
 export interface RateLimitInfo {
@@ -24,8 +26,8 @@ export class RateLimiter {
   private keyPrefix: string;
   private windowMs: number;
   private maxRequests: number;
-  private evalFunc: EvalFunction;
-  private delFunc: DelFunction;
+  private eval: EvalFunction;
+  private del: DelFunction;
 
   private static limitScript = `
     local currentTimestamp = tonumber(ARGV[1])
@@ -68,14 +70,14 @@ export class RateLimiter {
     this.keyPrefix = config.keyPrefix;
     this.windowMs = config.windowMs;
     this.maxRequests = config.maxRequests;
-    this.evalFunc = config.evalFunc;
-    this.delFunc = config.delFunc;
+    this.eval = config.redis.eval;
+    this.del = config.redis.del;
   }
 
   private async runScript(script: string, key: string): Promise<RateLimitInfo> {
     const currentTimestamp = Date.now();
     const namespacedKey = `${this.keyPrefix}:${key}`;
-    const result = await this.evalFunc(script, [namespacedKey], [
+    const result = await this.eval(script, [namespacedKey], [
       currentTimestamp.toString(),
       this.windowMs.toString(),
       this.maxRequests.toString(),
@@ -105,6 +107,6 @@ export class RateLimiter {
 
   async reset(key: string): Promise<void> {
     const namespacedKey = `${this.keyPrefix}:${key}`;
-    return await this.delFunc(namespacedKey);
+    return await this.del(namespacedKey);
   }
 }

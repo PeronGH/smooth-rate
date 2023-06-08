@@ -27,13 +27,15 @@ const rateLimiter = new RateLimiter({
   keyPrefix: 'ratelimit',
   windowMs: 60 * 1000, // 60 seconds
   maxRequests: 100,
-  async evalFunc(script, keys, args) {
+  redis: {
     // Take `x/redis` as an example
-    const raw = await redis.eval(script, keys, args);
-    return raw!.toString();
-  },
-  async delFunc(key) {
-    await redis.del(key);
+    async eval(script, keys, args) {
+      const raw = await redis.eval(script, keys, args);
+      return raw!.toString();
+    },
+    async del(key) {
+      await redis.del(key);
+    },
   },
 });
 ```
