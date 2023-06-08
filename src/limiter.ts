@@ -97,14 +97,28 @@ export class RateLimiter {
     };
   }
 
+  /**
+   * Applies a rate limit rule to a given identifier.
+   * @param key Identifier to be rate limited.
+   * @returns Rate limit information including remaining requests, next available timestamp, and whether it's currently limited.
+   */
   async limit(key: string): Promise<RateLimitInfo> {
     return await this.runScript(RateLimiter.limitScript, key);
   }
 
+  /**
+   * Checks the rate limit status for a given identifier without applying the rate limit.
+   * @param key Identifier to be checked.
+   * @returns Rate limit information including remaining requests, next available timestamp, and whether it's currently limited.
+   */
   async check(key: string): Promise<RateLimitInfo> {
     return await this.runScript(RateLimiter.checkScript, key);
   }
 
+  /**
+   * Resets the rate limit for a given identifier.
+   * @param key Identifier for which to reset the rate limit.
+   */
   async reset(key: string): Promise<void> {
     const namespacedKey = `${this.keyPrefix}:${key}`;
     return await this.del(namespacedKey);
